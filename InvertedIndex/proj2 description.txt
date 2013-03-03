@@ -1,0 +1,5 @@
+XmlInputFormat.java를 input formatter로 이용하여 xml input을 파싱했습니다
+BuildIndex.java에서 mapreduce를 하는데 mapper에서 inverted index를 만들고, 
+reducer에서 이것을 한 줄 한 줄 출력하게 만들었습니다
+일단 proj2 에서는 selected word set에서만 체크를 하기 때문에 속도 문제 상 selected word만 출력하게 만들었습니다
+jar로 export 한 뒤 shell 에서 $ hadoop jar buildindex.jar BuildIndex /corpus /user/st01/output 형식으로 실행하면 됩니다
