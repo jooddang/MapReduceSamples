@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/92/HadoopStudy-JD-MatrixReloaded/test/matrix
+END
+OutputCollectorMock.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/!svn/ver/57/HadoopStudy-JD-MatrixReloaded/test/matrix/OutputCollectorMock.java
+END
+MatrixAdderTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/71/HadoopStudy-JD-MatrixReloaded/test/matrix/MatrixAdderTest.java
+END
+IntVectorWritableTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/100/HadoopStudy-JD-MatrixReloaded/test/matrix/IntVectorWritableTest.java
+END

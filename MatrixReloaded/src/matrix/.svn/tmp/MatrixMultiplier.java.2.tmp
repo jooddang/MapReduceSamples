@@ -1,0 +1,222 @@
+package matrix;
+
+import java.io.IOException;
+import java.util.Iterator;
+
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.JobClient;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.MapReduceBase;
+import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reducer;
+import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapred.lib.IdentityMapper;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+public class MatrixMultiplier extends Configured implements Tool {
+	
+	public static class MultiplyMapper extends MapReduceBase implements Mapper<PositionWritable, IntVectorWritable, PositionWritable, IntWritable> {
+		
+		private int BColNum, ARowNum;
+		private String firstInput, secondInput;
+		
+		// Let's assume that we multiply two matrices with dimensions 2x3 and 3x4 each.
+		// The comments below are based on this assumption for intuitiveness.
+
+		@Override
+		public void map(PositionWritable key, IntVectorWritable value,
+				OutputCollector<PositionWritable, IntWritable> output,
+				Reporter reporter) throws IOException {
+
+			PositionWritable reduceKey = new PositionWritable();
+			
+			String currentFile =  key.getInputName();
+			System.out.println("Input file for me : " + currentFile);
+			// The first file has 2 rows (so, this map() is called twice) and 3 elements in each value.
+			if (currentFile.endsWith(firstInput)) {
+				System.out.println("First matrix (BColNum="+BColNum+")"); // BRowNum?
+				int colIndex = 0;
+				int interRow, interCol;
+				// colIndex varies from 0 to 2 (3 columns in A)
+				value.rewind();
+				while (value.hasNext()) {
+					// For each element,
+					// loop as many times as the number of B's rows,
+					// and generate <key,value> pairs.
+					int tempValue = value.next();
+					System.out.println("for this column ["+value.getCurrentPos()+" / "+value.getSize()+"]="+tempValue);
+					for (int i = 0; i < BColNum; i++) {
+						interRow = key.getRow() * ARowNum + i;
+						interCol = colIndex;
+						reduceKey.set(interRow, interCol, key.getRow(), i);
+						System.out.println("(First) Sending "+tempValue+ " to ("+interRow+", "+interCol+" / "+key.getRow()+", "+i+")");
+						output.collect(reduceKey, new IntWritable(tempValue));
+					}
+					colIndex++;
+				}
+			}
+			// The second file has 3 rows (so, this map() is called 3 times) and 4 elements in each value.
+			else if (currentFile.endsWith(secondInput)){
+				System.out.println("Second matrix (ARowNum="+ARowNum+")"); // AColNum?
+				int colIndex = 0;
+				int interRow, interCol;
+				// colIndex varies from 0 to 3 (4 columns in B)
+				value.rewind();
+				while (value.hasNext()) { 
+					// For each element,
+					// loop as many times as the number of A's rows,
+					// and generate <key,value> pairs.
+					int tempValue = value.next();
+					System.out.println("for this column ["+value.getCurrentPos()+" / "+value.getSize()+"]="+tempValue);
+					for (int i = 0; i < ARowNum; i++) {
+						interRow = i * ARowNum + colIndex;
+						interCol = key.getRow();
+						reduceKey.set(interRow, interCol, i, colIndex);
+						System.out.println("(Second) Sending "+tempValue+ " to ("+interRow+", "+interCol+" / "+i+", "+colIndex+")");
+						output.collect(reduceKey, new IntWritable(tempValue));
+					}
+					colIndex++;
+				}
+			} else {
+				System.err.println("MultipleMapper.map(): should not reach here!");
+			}
+		}
+		
+		public void configure(JobConf conf) {
+			super.configure(conf);
+			firstInput = conf.get("First");
+			secondInput = conf.get("Second");
+			ARowNum = conf.getInt("ARowNum", 0);
+			BColNum = conf.getInt("BColNum", 0);
+		}
+		
+	}
+	
+	public static class MultiplyReducer extends MapReduceBase implements Reducer<PositionWritable, IntWritable, PositionWritable, IntWritable> {
+		
+		private static final IntWritable result = new IntWritable();
+
+		@Override
+		public void reduce(PositionWritable key, Iterator<IntWritable> values,
+				OutputCollector<PositionWritable, IntWritable> output,
+				Reporter reporter) throws IOException {
+
+<<<<<<< .mine
+			System.out.println("multiplier reduce start");
+			System.out.println("multiplier reduce :: values " + values.toString());
+			IntWritable result = new IntWritable(1);
+=======
+			System.out.println("Reducer with key (" + key.getRow() + ", " + key.getCol() + ")");
+			int multiplied = 1; // 1 is the indentity element of multiplication.
+>>>>>>> .r100
+			while (values.hasNext()) {
+				int elem = values.next().get();
+				System.out.println("  value : " + elem);
+				multiplied *= elem;
+			}
+			System.out.println("  result : " + multiplied);
+			result.set(multiplied);
+			output.collect(key, result);
+		}
+		
+	}
+	
+	public static class AddMapper extends IdentityMapper<PositionWritable, IntWritable> {
+	}
+	
+	public static class AddReducer extends MapReduceBase implements Reducer<PositionWritable, IntWritable, PositionWritable, IntWritable> {
+		
+		private static final IntWritable result = new IntWritable();
+
+		@Override
+		public void reduce(PositionWritable key, Iterator<IntWritable> values,
+				OutputCollector<PositionWritable, IntWritable> output,
+				Reporter reporter) throws IOException {
+
+			int sum = 0; // 0 is the identity element of addition.
+			while (values.hasNext()) {
+				sum += values.next().get();
+			}
+			result.set(sum);
+			output.collect(key, result);
+		}
+	}
+
+	@Override
+	public int run(String[] args) throws Exception {
+		JobConf conf;
+//		Path intermediateFilePath = new Path("/user/jooddang/output-matrixmultiply-1");
+//		Path outputFilePath = new Path("/user/jooddang/output-matrixmultiply-2");
+		Path intermediateFilePath = new Path("/intern/jd-intermediate2/");
+		Path outputFilePath = new Path("/intern/jd-output2/");
+		FileSystem fs;
+		
+		System.out.println("Initializing MatrixMultiplier - multiplication phase...");
+		conf = new JobConf(getConf(), MatrixMultiplier.class);
+//		conf.set("fs.default.name", "hdfs://192.168.2.225:9000");
+//		conf.set("hadoop.job.ugi", "jooddang,supergroup");
+//		conf.set("mapred.job.tracker", "192.168.2.225:9001");
+//		conf.set("mapred.jar", "c:/matrix.jar");
+		conf.setMapOutputKeyClass(PositionWritable.class);
+		conf.setMapOutputValueClass(IntWritable.class);
+		conf.setOutputKeyClass(PositionWritable.class);
+		conf.setOutputValueClass(IntWritable.class);
+		conf.setMapperClass(MultiplyMapper.class);
+		conf.setReducerClass(MultiplyReducer.class);
+		conf.setInputFormat(MatrixInputFormat.class);
+		conf.setOutputFormat(MatrixMultiplyIntermediateOutputFormat.class);
+//		FileInputFormat.setInputPaths(conf,
+//				"/user/daybreaker/matrices/matrix-2x3-0," +
+//				"/user/daybreaker/matrices/matrix-3x2-0");
+		FileInputFormat.setInputPaths(conf, "/intern/matrices/matrix-100x300-0,/intern/matrices/matrix-300x200-0");
+		conf.set("First", "matrix-100x300-0");
+		conf.set("Second", "matrix-300x200-0");
+		conf.setInt("ARowNum", 2);
+		conf.setInt("AColNum", 3);
+		conf.setInt("BRowNum", 3);
+		conf.setInt("BColNum", 2);
+		FileOutputFormat.setOutputPath(conf, intermediateFilePath);
+		fs = FileSystem.get(conf);
+		fs.delete(intermediateFilePath, true); // Delete before running the job.
+		System.out.println("Submitting the job...");
+		JobClient.runJob(conf);
+		System.out.println("Job submit OK.");
+		
+		System.out.println("Initializing MatrixMultiplier - addition phase...");
+		conf = new JobConf(getConf(), MatrixMultiplier.class);
+//		conf.set("fs.default.name", "hdfs://192.168.2.225:9000");
+//		conf.set("hadoop.job.ugi", "jooddang,supergroup");
+//		conf.set("mapred.job.tracker", "192.168.2.225:9001");
+//		conf.set("mapred.jar", "c:/matrix.jar");
+		conf.setMapOutputKeyClass(PositionWritable.class);
+		conf.setMapOutputValueClass(IntWritable.class);
+		conf.setOutputKeyClass(PositionWritable.class);
+		conf.setOutputValueClass(IntWritable.class);
+		conf.setMapperClass(AddMapper.class);
+		conf.setReducerClass(AddReducer.class);
+		conf.setInputFormat(MatrixMultiplyIntermediateInputFormat.class);
+		conf.setOutputFormat(MatrixMultiplyOutputFormat.class);
+		FileInputFormat.addInputPath(conf, intermediateFilePath);
+		FileOutputFormat.setOutputPath(conf, outputFilePath);
+		fs = FileSystem.get(conf);
+		fs.delete(outputFilePath, true); // Delete before running the job.
+		System.out.println("Submitting the job...");
+		JobClient client = new JobClient(conf);
+		client.submitJob(conf);
+		System.out.println("Job submit OK.");
+		
+		return 0;
+	}
+	
+	public static void main(String[] args) throws Exception {
+		ToolRunner.run(new MatrixMultiplier(), args);
+	}
+	
+}

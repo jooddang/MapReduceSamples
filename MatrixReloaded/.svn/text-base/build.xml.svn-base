@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<project name="HadoopStudy-JD-MatrixReloaded" default="deploy">
+	<property name="dist" value="dist"/>
+	<property name="jar" value="C:/matrix.jar"/>
+	
+	<target name="jar">
+		<mkdir dir="${dist}"/>
+		<jar basedir="bin" destfile="${jar}"/>
+	</target>
+	
+	<target name="deploy" depends="jar">
+		<scp file="${jar}" todir="intern@143.248.144.27:/home/intern/daybreaker"
+			keyfile="C:/Projects/HadoopStudy-JD-MatrixReloaded/priv_key" passphrase="" trust="true">
+		</scp>
+	</target>
+</project>

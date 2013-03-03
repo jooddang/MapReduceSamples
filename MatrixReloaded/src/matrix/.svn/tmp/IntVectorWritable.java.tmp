@@ -1,0 +1,116 @@
+package matrix;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapred.InputSplit;
+
+public class IntVectorWritable implements Writable, InputSplit {
+	
+	protected ArrayList<Integer> elements;
+	protected int currentPos;
+	
+	public IntVectorWritable() {
+		currentPos = 0;
+		elements = new ArrayList<Integer>();
+	}
+	
+	public IntVectorWritable(int[] values) {
+		this();
+		for (int value: values) {
+			elements.add(value);
+		}
+	}
+	
+	/**
+	 * Checks if there is any left element after the current position.
+	 * 
+	 * @return True if more elements exist.
+	 */
+	public boolean hasNext() {
+		if (currentPos < elements.size()) {
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Retrieves the element at the current position and moves the position pointer forward.
+	 * 
+	 * @return The value of the current element.
+	 */
+	public int next() {
+		int value;
+		if (!hasNext()) {
+			throw new ArrayIndexOutOfBoundsException();	
+		}
+		value = elements.get(currentPos);
+		currentPos += 1;
+		return value;
+	}
+	
+	/**
+	 * Makes the position pointer to point at the first position.
+	 */
+	public void rewind() {
+		currentPos = 0;
+	}
+	
+	/**
+	 * Retrieves the number of elements in the vector.
+	 * 
+	 * @return Integer value indicating the size.
+	 */
+	public int size() {
+		return elements.size();
+	}
+	
+	/**
+	 * Set the element at the currnet position, or append if the current position is larger than the size of vector.
+	 * 
+	 * @param value An integer value to set.
+	 */
+	public void push(int value) {
+		if (currentPos >= elements.size()) {
+			elements.add(value);
+		} else {
+			elements.set(currentPos, value);
+		}
+	}
+	
+	@Override
+	public void readFields(DataInput in) throws IOException {
+		int numCols = in.readInt();
+		int i;
+		elements.clear();
+		for (i = 0; i < numCols; i++) {
+			elements.add(in.readInt());
+		}
+		currentPos = 0;
+	}
+
+	@Override
+	public void write(DataOutput out) throws IOException {
+		int i;
+		out.writeInt(elements.size());
+		for (i = 0; i < elements.size(); i++) {
+			out.writeInt(elements.get(i));
+		}
+	}
+
+	@Override
+	public long getLength() throws IOException {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public String[] getLocations() throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+}
